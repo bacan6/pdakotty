@@ -1,0 +1,48 @@
+---
+description: Patterns for www HTML pages and scripts
+globs: www/**/*.{html,js}
+alwaysApply: false
+---
+
+# www page conventions
+
+## Script load order (feature pages)
+
+```html
+<script src="scripts/jquery.min.js"></script>
+<!-- inline page logic -->
+<script src="scripts/barcode-scanner.js"></script>  <!-- if scanning -->
+<script src="scripts/bootstrap.min.js"></script>
+<script src="scripts/custom.js"></script>
+```
+
+## API call pattern
+
+```javascript
+var data = new FormData();
+data.append('toko', localStorage.getItem('toko'));
+data.append('id', id);
+$.ajax({
+  type: 'POST',
+  processData: false,
+  contentType: false,
+  data: data,
+  url: 'https://store.kottykosmetik.com/Q_Stock_opname/cari_produk',
+  dataType: 'json',
+  success: function (data) { /* build HTML into #detail* */ },
+  error: sqlerror
+});
+```
+
+## Required on protected pages
+
+- Call `cekLogin()` on load; redirect to `index.html` if no `tokenpda`
+- Product/barcode lookups: skip API until input length >= 4
+- Save endpoints: include `token` and `iduser` from localStorage
+- Error responses: check `data.status == 'error'` then `showNotification(data.pesan, 'error')`
+
+## Layout classes
+
+- `card card-style` for content blocks
+- `footer-bar-5` bottom nav on dashboard and feature pages
+- `header header-fixed header-auto-show` top bar

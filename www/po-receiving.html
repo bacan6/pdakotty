@@ -82,6 +82,7 @@
     </div>
 
     <script src="scripts/jquery.min.js"></script>
+    <script src="scripts/scanner-enter.js"></script>
     <script type="text/javascript">
         var token = localStorage.getItem('tokenpda');
         cekLogin();
@@ -150,11 +151,6 @@
                 }
             })
         }
-
-        $(document).on("keyup change", "#sku", function() {
-            var sku = $(this).val();
-            cariOrder(sku);
-        });
 
         function cariOrder(id) {
             if (id.length < 4) return false;
@@ -252,6 +248,13 @@
                 $("#btnSimpPo").html('Simpan');
             }
         }
+
+        bindEnterAction('#sku', function () {
+            cariOrder($('#sku').val());
+        });
+        bindEnterAction('#stok', function () {
+            btSimpanPo();
+        });
     </script>
     <script type="text/javascript" src="scripts/barcode-scanner.js"></script>
     <script type="text/javascript" src="scripts/bootstrap.min.js"></script>

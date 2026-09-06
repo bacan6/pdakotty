@@ -53,6 +53,41 @@
                 <form id="f_so">
                     <div class="content mb-0">
                         <h3 class="font-700">Stock Opname</h3>
+
+                        <div class="d-flex align-items-center mb-3">
+                            <div class="form-check form-check-inline">
+                                <input class="form-check-input" type="radio" name="soMode" id="modeOnline" value="online" checked>
+                                <label class="form-check-label" for="modeOnline">Online</label>
+                            </div>
+                            <div class="form-check form-check-inline">
+                                <input class="form-check-input" type="radio" name="soMode" id="modeOffline" value="offline">
+                                <label class="form-check-label" for="modeOffline">Offline</label>
+                            </div>
+                        </div>
+
+                        <div id="offlineControls" style="display:none;" class="mb-3">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <small id="syncStatus">Produk: - | Pending: -</small>
+                            </div>
+                            <div class="btn-group w-100 mb-2">
+                                <button type="button" class="btn btn-sm btn-secondary" onclick="doSyncProducts();">
+                                    <i class="fa fa-sync"></i> Sync Produk
+                                </button>
+                                <button type="button" class="btn btn-sm btn-warning" onclick="doViewPending();">
+                                    <i class="fa fa-list"></i> Pending
+                                </button>
+                                <button type="button" class="btn btn-sm btn-success" onclick="doBulkSync();">
+                                    <i class="fa fa-upload"></i> Kirim
+                                </button>
+                            </div>
+                            <div id="syncProgress" style="display:none;">
+                                <div class="progress mb-2">
+                                    <div id="syncProgressBar" class="progress-bar" role="progressbar" style="width:0%"></div>
+                                </div>
+                                <small id="syncProgressText">0 / 0</small>
+                            </div>
+                        </div>
+
                         <p class="mb-4">Silahkan scan barcode produk.</p>
 
                         <div class="input-style has-icon mb-4">
@@ -72,9 +107,31 @@
                 </form>
             </div>
         </div>
+
+        <div class="modal fade" id="pendingModal" tabindex="-1">
+            <div class="modal-dialog modal-dialog-scrollable">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Pending Stock Opname</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <table class="table table-sm">
+                            <thead><tr><th>SKU</th><th>Produk</th><th>Qty</th><th></th></tr></thead>
+                            <tbody id="pendingList"></tbody>
+                        </table>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Tutup</button>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 
     <script src="scripts/jquery.min.js"></script>
+    <script src="scripts/so-offline.js"></script>
+    <script src="scripts/scanner-enter.js"></script>
     <script type="text/javascript">
         cekLogin();
 
@@ -116,84 +173,116 @@
             window.location.href = 'index.html';
         }
 
-        $(document).on("keyup change", "#idpro", function() {
-            var id = $(this).val();
-            cariProduk(id);
-        });
-
         function cariProduk(id) {
             if (id.length < 4) return false;
-            var data = new FormData();
-            var toko = localStorage.getItem('toko');
-            data.append('id', id);
-            data.append('toko', toko);
-            $.ajax({
-                type: 'POST',
-                processData: false, // important
-                contentType: false, // important
-                data: data,
-                url: 'https://store.kottykosmetik.com/Q_Stock_opname/cari_produk',
-                dataType: 'json',
-                success: function(data) {
-                    console.log(data);
+
+            if (isOfflineMode) {
+                SoOffline.lookupProduct(id).then(function(product) {
                     var html = '';
-                    var no = 0;
-                    if (data.length == 0) {
-                        html = '<div class="">Produk Tidak ditemukan..</div>';
+                    if (!product) {
+                        html = '<div class="">Produk Tidak ditemukan di database lokal.</div>';
+                        $('#pstok').hide();
                     } else {
-                        for (i = 0; i < data.length; i++) {
-                            html += '<div class="">' + data[i].nama_produk + '</div>' +
-                                '<input id="harga" type="hidden" name="harga" value="' + data[i].harga + '">' +
-                                '<input id="stokbefore" type="hidden" name="stokbefore" value="' + data[i].stok + '">';
-                        }
-                        $("#pstok").show();
-                        $("#stok").focus();
+                        html = '<div class="">' + product.nama_produk + '</div>' +
+                            '<input id="harga" type="hidden" name="harga" value="' + product.harga + '">' +
+                            '<input id="stokbefore" type="hidden" name="stokbefore" value="' + product.stok + '">' +
+                            '<input id="namapro" type="hidden" value="' + product.nama_produk + '">';
+                        $('#pstok').show();
+                        $('#stok').focus();
                     }
                     $('#detailpro').html(html);
-                }
-            })
+                });
+            } else {
+                var data = new FormData();
+                var toko = localStorage.getItem('toko');
+                data.append('id', id);
+                data.append('toko', toko);
+                $.ajax({
+                    type: 'POST',
+                    processData: false,
+                    contentType: false,
+                    data: data,
+                    url: 'https://store.kottykosmetik.com/Q_Stock_opname/cari_produk',
+                    dataType: 'json',
+                    success: function(data) {
+                        var html = '';
+                        if (data.length == 0) {
+                            html = '<div class="">Produk Tidak ditemukan..</div>';
+                        } else {
+                            for (var i = 0; i < data.length; i++) {
+                                html += '<div class="">' + data[i].nama_produk + '</div>' +
+                                    '<input id="harga" type="hidden" name="harga" value="' + data[i].harga + '">' +
+                                    '<input id="stokbefore" type="hidden" name="stokbefore" value="' + data[i].stok + '">';
+                            }
+                            $('#pstok').show();
+                            $('#stok').focus();
+                        }
+                        $('#detailpro').html(html);
+                    }
+                });
+            }
         }
 
         function btSimpanSo() {
-            $("#btnSimpSo").html('loading...');
+            $('#btnSimpSo').html('loading...');
 
             var stok = $('#stok').val();
             if (stok == '' || stok == null || stok == undefined) {
                 showNotification('Qty belum diisi!', 'warning');
-                $("#btnSimpSo").html('Simpan');
-                $("#stok").focus();
+                $('#btnSimpSo').html('Simpan');
+                $('#stok').focus();
                 return false;
             }
 
-            var data = new FormData();
-            var idproduk = $('#idpro').val();
-            var stok = $('#stok').val();
-            var stokbefore = $('#stokbefore').val();
-            var harga = $('#harga').val();
+            if (isOfflineMode) {
+                var item = {
+                    id_produk: $('#idpro').val(),
+                    nama_produk: $('#namapro').val() || $('#idpro').val(),
+                    stok_fisik: parseInt(stok),
+                    stok_before: $('#stokbefore').val(),
+                    harga: $('#harga').val()
+                };
 
-            var toko = localStorage.getItem('toko');
-            data.append('toko', toko);
-            data.append('idproduk', idproduk);
-            data.append('stok', stok);
-            data.append('harga', harga);
-            data.append('stokbefore', stokbefore);
-            var token = localStorage.getItem('tokenpda');
-            var iduser = localStorage.getItem('id');
-            data.append('token', token);
-            data.append('iduser', iduser);
+                SoOffline.saveSoItem(item).then(function() {
+                    showNotification('Disimpan ke lokal', 'success');
+                    $('input[type=text]').val('');
+                    $('#btnSimpSo').html('Simpan');
+                    $('#pstok').hide();
+                    $('#idpro').focus();
+                    $('#detailpro').html('');
+                    updateSyncStatus();
+                }).catch(function(err) {
+                    showNotification('Gagal simpan: ' + err.message, 'error');
+                    $('#btnSimpSo').html('Simpan');
+                });
+            } else {
+                var data = new FormData();
+                var idproduk = $('#idpro').val();
+                var stokbefore = $('#stokbefore').val();
+                var harga = $('#harga').val();
+                var toko = localStorage.getItem('toko');
+                var token = localStorage.getItem('tokenpda');
+                var iduser = localStorage.getItem('id');
 
-            $.ajax({
-                type: 'POST',
-                processData: false, // important
-                contentType: false, // important
-                data: data,
-                url: 'https://store.kottykosmetik.com/Q_Stock_opname/simpan_so',
-                dataType: 'json',
-                // in PHP you can call and process file in the same way as if it was submitted from a form:
-                // $_FILES['input_file_name']
-                success: simpanSukses,
-                error: sqlerror
-            });
+                data.append('toko', toko);
+                data.append('idproduk', idproduk);
+                data.append('stok', stok);
+                data.append('harga', harga);
+                data.append('stokbefore', stokbefore);
+                data.append('token', token);
+                data.append('iduser', iduser);
+
+                $.ajax({
+                    type: 'POST',
+                    processData: false,
+                    contentType: false,
+                    data: data,
+                    url: 'https://store.kottykosmetik.com/Q_Stock_opname/simpan_so',
+                    dataType: 'json',
+                    success: simpanSukses,
+                    error: sqlerror
+                });
+            }
         }
 
         function simpanSukses(data) {
@@ -209,6 +298,110 @@
                 $('#detailpro').html('');
             }
         }
+        bindEnterAction('#idpro', function () {
+            cariProduk($('#idpro').val());
+        });
+        bindEnterAction('#stok', function () {
+            btSimpanSo();
+        });
+
+        var isOfflineMode = false;
+
+        $('input[name="soMode"]').on('change', function() {
+            isOfflineMode = (this.value === 'offline');
+            $('#offlineControls').toggle(isOfflineMode);
+            if (isOfflineMode) {
+                SoOffline.initDB().then(updateSyncStatus);
+            }
+            $('input[type=text]').val('');
+            $('#detailpro').html('');
+            $('#pstok').hide();
+        });
+
+        function updateSyncStatus() {
+            Promise.all([
+                SoOffline.getProductCount(),
+                SoOffline.getPendingCount(),
+                SoOffline.getSyncMeta('products_last_sync')
+            ]).then(function(results) {
+                var prodCount = results[0];
+                var pendCount = results[1];
+                var lastSync = results[2];
+                var syncText = lastSync ? new Date(lastSync).toLocaleString('id-ID') : '-';
+                $('#syncStatus').html('Produk: ' + prodCount + ' | Pending: ' + pendCount + '<br><small>Sync: ' + syncText + '</small>');
+            });
+        }
+
+        function doSyncProducts() {
+            var toko = localStorage.getItem('toko');
+            var token = localStorage.getItem('tokenpda');
+
+            $('#syncProgress').show();
+            $('#syncProgressBar').css('width', '0%');
+            $('#syncProgressText').text('Memulai...');
+
+            SoOffline.syncProducts(toko, token, function(synced, total) {
+                var pct = Math.round((synced / total) * 100);
+                $('#syncProgressBar').css('width', pct + '%');
+                $('#syncProgressText').text(synced + ' / ' + total);
+            }).then(function() {
+                $('#syncProgress').hide();
+                showNotification('Sync produk selesai', 'success');
+                updateSyncStatus();
+            }).catch(function(err) {
+                $('#syncProgress').hide();
+                showNotification('Gagal sync: ' + err.message, 'error');
+            });
+        }
+
+        function doViewPending() {
+            SoOffline.getPendingItems().then(function(items) {
+                var html = '';
+                if (items.length === 0) {
+                    html = '<tr><td colspan="4" class="text-center">Tidak ada data pending</td></tr>';
+                } else {
+                    items.forEach(function(item) {
+                        html += '<tr>' +
+                            '<td>' + item.id_produk + '</td>' +
+                            '<td>' + item.nama_produk + '</td>' +
+                            '<td>' + item.stok_fisik + '</td>' +
+                            '<td><button class="btn btn-sm btn-danger" onclick="deletePendingItem(' + item.id + ')"><i class="fa fa-trash"></i></button></td>' +
+                            '</tr>';
+                    });
+                }
+                $('#pendingList').html(html);
+                new bootstrap.Modal(document.getElementById('pendingModal')).show();
+            });
+        }
+
+        function deletePendingItem(id) {
+            SoOffline.deleteSoItem(id).then(function() {
+                doViewPending();
+                updateSyncStatus();
+            });
+        }
+
+        function doBulkSync() {
+            SoOffline.getPendingCount().then(function(count) {
+                if (count === 0) {
+                    showNotification('Tidak ada data pending', 'info');
+                    return;
+                }
+                if (!confirm('Kirim ' + count + ' item ke server?')) return;
+
+                var toko = localStorage.getItem('toko');
+                var token = localStorage.getItem('tokenpda');
+                var iduser = localStorage.getItem('id');
+
+                SoOffline.bulkSyncToServer(toko, token, iduser).then(function(res) {
+                    showNotification(res.pesan, 'success');
+                    updateSyncStatus();
+                }).catch(function(err) {
+                    showNotification('Gagal: ' + err.message, 'error');
+                });
+            });
+        }
+
         setTimeout(function() {
             $("#idpro").focus();
         }, 2000);

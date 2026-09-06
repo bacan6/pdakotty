@@ -1,0 +1,23 @@
+---
+description: Solusi PDA Cordova app — read AGENTS.md before changes
+alwaysApply: true
+---
+
+# Solusi PDA (pdakotty)
+
+Read `AGENTS.md` at repo root for architecture, API map, and file layout.
+
+Quick facts:
+- Cordova Android PDA app; source lives in `www/` (static HTML + jQuery)
+- Backend: POST FormData to `https://store.kottykosmetik.com/Q_*` controllers
+- Auth: `localStorage` keys `tokenpda`, `toko`, `id`, `user`, `first`, `last`
+- Barcode: `openBarcodeScanner()` from `www/scripts/barcode-scanner.js`
+- Toasts: `showNotification(msg, type)` in `www/scripts/custom.js`
+- UI: Bootstrap + Azures template; custom styles in `www/styles/modern-ui.css`
+
+When editing:
+- Match per-page inline script style (no modules/bundler)
+- Keep Indonesian UI strings
+- Minimize scope — do not refactor duplicated auth/ajax unless asked
+- New HTML pages: update `www/_service-worker.js` STATIC_ASSETS
+- Do not edit `www/fonts/`, `platforms/`, or Cordova `plugins/`

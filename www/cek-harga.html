@@ -68,6 +68,7 @@
     </div>
 
     <script src="scripts/jquery.min.js"></script>
+    <script src="scripts/scanner-enter.js"></script>
     <script type="text/javascript">
         cekLogin();
 
@@ -109,11 +110,6 @@
             window.location.href = 'index.html';
         }
 
-        $(document).on("keyup change", "#idharga", function() {
-            var id = $(this).val();
-            cariProdukHarga(id);
-        });
-
         function cariProdukHarga(id) {
             if (id.length < 4) return false;
             var data = new FormData();
@@ -144,6 +140,10 @@
                 }
             })
         }
+        bindEnterAction('#idharga', function () {
+            cariProdukHarga($('#idharga').val());
+        });
+
         setTimeout(function() {
             $("#idharga").focus();
         }, 2000);

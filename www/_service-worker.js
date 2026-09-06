@@ -16,6 +16,8 @@ const STATIC_ASSETS = [
   '/scripts/bootstrap.min.js',
   '/scripts/custom.js',
   '/scripts/barcode-scanner.js',
+  '/scripts/scanner-enter.js',
+  '/scripts/so-offline.js',
   '/fonts/css/all.css',
   '/fonts/css/solid.css',
   '/fonts/css/fontawesome-all.min.css',
