@@ -1,0 +1,220 @@
+<!DOCTYPE HTML>
+<html lang="en">
+
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1, viewport-fit=cover" />
+    <title>PDA Solusi POS</title>
+    <link rel="stylesheet" type="text/css" href="styles/bootstrap.css">
+    <link rel="stylesheet" type="text/css" href="styles/style.css">
+    <link rel="stylesheet" type="text/css" href="styles/modern-ui.css">
+    <link href="https://fonts.googleapis.com/css?family=Poppins:300,400,500,600,700,800,900|Roboto:300,300i,400,400i,500,500i,700,700i,900,900i&amp;display=swap" rel="stylesheet">
+    <link rel="stylesheet" type="text/css" href="fonts/css/all.css">
+    <link rel="stylesheet" type="text/css" href="fonts/css/solid.css">
+    <link rel="apple-touch-icon" sizes="180x180" href="app/icons/icon-192x192.png">
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#1a73e8">
+</head>
+
+<body class="theme-light">
+
+    <div id="preloader">
+        <div class="spinner-border color-highlight" role="status"></div>
+    </div>
+
+    <div id="page">
+
+        <div class="header header-fixed header-auto-show header-logo-app">
+            <a href="#" data-back-button class="header-title header-subtitle">Solusi POS</a>
+            <a href="#" data-toggle-theme class="header-icon header-icon-2 show-on-theme-dark"><i class="fas fa-sun"></i></a>
+            <a href="#" data-toggle-theme class="header-icon header-icon-2 show-on-theme-light"><i class="fas fa-moon"></i></a>
+
+        </div>
+        <div id="footer-bar" class="footer-bar-5">
+            <a href="#" onclick="javascript:menu('po-receiving.html');"><i class="fa fa-truck color-highlight"></i><span>PO</span></a>
+            <a href="#" onclick="javascript:menu('cek-harga.html');"><i class="fa-solid fa-barcode color-highlight"></i><span>Harga</span></a>
+            <a href="#" onclick="javascript:menu('stock-opname.html');"><i class="fa fa-cubes color-highlight"></i><span>SO</span></a>
+            <a href="#" onclick="javascript:menu('label-harga.html');"><i class="fa-solid fa-clipboard-question color-highlight"></i><span>Label</span></a>
+            <a href="#" onclick="logoutMe();"><i class="fa fa-sign-out-alt color-red-dark"></i><span>Logout</span></a>
+        </div>
+
+        <div class="page-content" style="min-height:60vh!important">
+            <div class="page-title page-title-small">
+                <h2></h2>
+            </div>
+            <div class="card header-card shape-rounded" data-card-height="150">
+                <div class="card-overlay bg-highlight opacity-95"></div>
+                <div class="card-overlay dark-mode-tint"></div>
+            </div>
+
+            <div class="card card-style">
+                <form id="f_so">
+                    <div class="content mb-0">
+                        <h3 class="font-700">Stock Opname</h3>
+                        <p class="mb-4">Silahkan scan barcode produk.</p>
+
+                        <div class="input-style has-icon mb-4">
+                            <i class="fa fa-barcode"></i>
+                            <input type="text" id="idpro" name="id_produk" class="form-control" placeholder="Barcode/SKU" autofocus required>
+                        </div>
+
+                        <div class="card-jd mb-4" id="detailpro"></div>
+
+                        <div class="input-style mb-4" id="pstok" style="display:none">
+                            <input type="text" name="stok" class="form-control" id="stok" placeholder="Stok Fisik">
+                        </div>
+
+                        <button type="button" onclick="btSimpanSo();" class="btn btn-full btn-green mb-3 w-100 shadow-lg" id="btnSimpSo">SIMPAN</button>
+                        <button type="button" onclick="callScannerMG();" class="btn btn-full btn-blue mb-3 w-100 shadow-lg">SCANNER</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script src="scripts/jquery.min.js"></script>
+    <script type="text/javascript">
+        cekLogin();
+
+        function menu(url) {
+            window.location.href = url;
+        }
+
+        function callScannerMG() {
+            openBarcodeScanner(function (result) {
+                $('#idpro').val(result);
+                cariProduk(result);
+            }, 'Scan Barcode Stock Opname');
+        }
+
+        function cekLogin() {
+            var token = localStorage.getItem('tokenpda');
+            if (token == null || token == undefined) {
+                window.location.href = 'index.html';
+            } else {
+                setTimeout(function() {
+                    $("#idpro").focus();
+                }, 2000);
+                return true;
+            }
+        }
+
+        function sqlerror(error) {
+            showNotification('Error: ' + JSON.stringify(error), 'error');
+        }
+
+
+        function logoutMe() {
+            localStorage.setItem('tokenpda', '');
+            localStorage.setItem('user', '');
+            localStorage.setItem('first', '');
+            localStorage.setItem('last', '');
+            localStorage.setItem('toko', '');
+            localStorage.setItem('id', '');
+            window.location.href = 'index.html';
+        }
+
+        $(document).on("keyup change", "#idpro", function() {
+            var id = $(this).val();
+            cariProduk(id);
+        });
+
+        function cariProduk(id) {
+            if (id.length < 4) return false;
+            var data = new FormData();
+            var toko = localStorage.getItem('toko');
+            data.append('id', id);
+            data.append('toko', toko);
+            $.ajax({
+                type: 'POST',
+                processData: false, // important
+                contentType: false, // important
+                data: data,
+                url: 'https://store.kottykosmetik.com/Q_Stock_opname/cari_produk',
+                dataType: 'json',
+                success: function(data) {
+                    console.log(data);
+                    var html = '';
+                    var no = 0;
+                    if (data.length == 0) {
+                        html = '<div class="">Produk Tidak ditemukan..</div>';
+                    } else {
+                        for (i = 0; i < data.length; i++) {
+                            html += '<div class="">' + data[i].nama_produk + '</div>' +
+                                '<input id="harga" type="hidden" name="harga" value="' + data[i].harga + '">' +
+                                '<input id="stokbefore" type="hidden" name="stokbefore" value="' + data[i].stok + '">';
+                        }
+                        $("#pstok").show();
+                        $("#stok").focus();
+                    }
+                    $('#detailpro').html(html);
+                }
+            })
+        }
+
+        function btSimpanSo() {
+            $("#btnSimpSo").html('loading...');
+
+            var stok = $('#stok').val();
+            if (stok == '' || stok == null || stok == undefined) {
+                showNotification('Qty belum diisi!', 'warning');
+                $("#btnSimpSo").html('Simpan');
+                $("#stok").focus();
+                return false;
+            }
+
+            var data = new FormData();
+            var idproduk = $('#idpro').val();
+            var stok = $('#stok').val();
+            var stokbefore = $('#stokbefore').val();
+            var harga = $('#harga').val();
+
+            var toko = localStorage.getItem('toko');
+            data.append('toko', toko);
+            data.append('idproduk', idproduk);
+            data.append('stok', stok);
+            data.append('harga', harga);
+            data.append('stokbefore', stokbefore);
+            var token = localStorage.getItem('tokenpda');
+            var iduser = localStorage.getItem('id');
+            data.append('token', token);
+            data.append('iduser', iduser);
+
+            $.ajax({
+                type: 'POST',
+                processData: false, // important
+                contentType: false, // important
+                data: data,
+                url: 'https://store.kottykosmetik.com/Q_Stock_opname/simpan_so',
+                dataType: 'json',
+                // in PHP you can call and process file in the same way as if it was submitted from a form:
+                // $_FILES['input_file_name']
+                success: simpanSukses,
+                error: sqlerror
+            });
+        }
+
+        function simpanSukses(data) {
+            if (data.status == 'error') {
+                $("#btnSimpSo").html('Simpan');
+                showNotification(data.pesan, 'error');
+            } else {
+                showNotification('Stock opname berhasil disimpan', 'success');
+                $('input[type=text]').val('');
+                $("#btnSimpSo").html('Simpan');
+                $("#pstok").hide();
+                $("#idpro").focus();
+                $('#detailpro').html('');
+            }
+        }
+        setTimeout(function() {
+            $("#idpro").focus();
+        }, 2000);
+    </script>
+
+    <script type="text/javascript" src="scripts/barcode-scanner.js"></script>
+    <script type="text/javascript" src="scripts/bootstrap.min.js"></script>
+    <script type="text/javascript" src="scripts/custom.js"></script>
+</body>

@@ -1,0 +1,121 @@
+<!DOCTYPE HTML>
+<html lang="en">
+
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1, viewport-fit=cover" />
+    <title>PDA Solusi POS</title>
+    <link rel="stylesheet" type="text/css" href="styles/bootstrap.css">
+    <link rel="stylesheet" type="text/css" href="styles/style.css">
+    <link rel="stylesheet" type="text/css" href="styles/modern-ui.css">
+    <link href="https://fonts.googleapis.com/css?family=Poppins:300,400,500,600,700,800,900|Roboto:300,300i,400,400i,500,500i,700,700i,900,900i&amp;display=swap" rel="stylesheet">
+    <link rel="stylesheet" type="text/css" href="fonts/css/fontawesome-all.min.css">
+    <link rel="apple-touch-icon" sizes="180x180" href="app/icons/icon-192x192.png">
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#1a73e8">
+</head>
+
+<body class="theme-light">
+
+    <div id="preloader">
+        <div class="spinner-border color-highlight" role="status"></div>
+    </div>
+
+    <div id="page">
+
+        <div class="page-content">
+
+            <div class="page-title page-title-small text-center mt-5">
+                <h1 class="font-900">PDA - APP</h1>
+                <p class="color-highlight">Silahkan masuk untuk melanjutkan</p>
+            </div>
+
+            <div class="card card-style mt-5">
+                <form id="f_login">
+                    <div class="content mt-3 mb-0">
+                        <div class="input-style has-icon validate-field mb-4">
+                            <i class="fa fa-user"></i>
+                            <input type="text" name="username" class="form-control validate-name" id="user" placeholder="Username">
+                        </div>
+
+                        <div class="input-style has-icon validate-field mb-4">
+                            <i class="fa fa-lock"></i>
+                            <input type="password" name="password" class="form-control validate-password" id="pass" placeholder="Password">
+                        </div>
+
+                        <button type="button" class="btn btn-full btn-blue mb-4 w-100 shadow-lg" id="btlogin" onclick="btloginClick()">LOGIN</button>
+                    </div>
+                </form>
+            </div>
+            <div class="card card-style mt-5">
+                <div class="content" style="font-size: 11px;text-align: center;">
+                    <p>Versi 1.0.0
+                        <br>
+                        Copyright &copy; 2026 Solusi POS
+                    </p>
+                </div>
+            </div>
+
+        </div>
+
+    </div>
+
+    <script src="scripts/jquery.min.js"></script>
+    <script type="text/javascript">
+        document.addEventListener('DOMContentLoaded', function () {
+            var token = localStorage.getItem('tokenpda');
+            cekToken(token);
+        });
+
+        function cekToken(token) {
+            if (token && token.length > 0) {
+                window.location.href = 'dashboard.html';
+            }
+        }
+
+        function btloginClick() {
+            $("#btlogin").html('loading...');
+            var data = new FormData();
+            data.append('username', $('#user').val());
+            data.append('password', $('#pass').val());
+
+            $.ajax({
+                type: 'POST',
+                processData: false, // important
+                contentType: false, // important
+                data: data,
+                url: 'https://store.kottykosmetik.com/Q_Pda_login/auth',
+                dataType: 'json',
+                // in PHP you can call and process file in the same way as if it was submitted from a form:
+                // $_FILES['input_file_name']
+                success: loginsukses,
+                error: sqlerror
+            });
+        }
+
+        function loginsukses(data) {
+
+            if (data.status == 'error') {
+                $("#btlogin").html('Login');
+                showNotification(data.pesan, 'error');
+            } else {
+                localStorage.setItem('tokenpda', data.token);
+                localStorage.setItem('user', data.user);
+                localStorage.setItem('first', data.first);
+                localStorage.setItem('last', data.last);
+                localStorage.setItem('toko', data.toko);
+                localStorage.setItem('id', data.id);
+                window.location.href = 'dashboard.html';
+            }
+        }
+
+        function sqlerror(error) {
+            showNotification('Error: ' + JSON.stringify(error), 'error');
+        }
+    </script>
+
+    <script type="text/javascript" src="scripts/bootstrap.min.js"></script>
+    <script type="text/javascript" src="scripts/custom.js"></script>
+</body>

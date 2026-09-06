@@ -1,0 +1,259 @@
+<!DOCTYPE HTML>
+<html lang="en">
+
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1, viewport-fit=cover" />
+    <title>PDA Solusi POS</title>
+    <link rel="stylesheet" type="text/css" href="styles/bootstrap.css">
+    <link rel="stylesheet" type="text/css" href="styles/style.css">
+    <link rel="stylesheet" type="text/css" href="styles/modern-ui.css">
+    <link href="https://fonts.googleapis.com/css?family=Poppins:300,400,500,600,700,800,900|Roboto:300,300i,400,400i,500,500i,700,700i,900,900i&amp;display=swap" rel="stylesheet">
+    <link rel="stylesheet" type="text/css" href="fonts/css/all.css">
+    <link rel="stylesheet" type="text/css" href="fonts/css/solid.css">
+    <link rel="apple-touch-icon" sizes="180x180" href="app/icons/icon-192x192.png">
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#1a73e8">
+</head>
+
+<body class="theme-light">
+
+    <div id="preloader">
+        <div class="spinner-border color-highlight" role="status"></div>
+    </div>
+
+    <div id="page">
+
+        <div class="header header-fixed header-auto-show header-logo-app">
+            <a href="#" data-back-button class="header-title header-subtitle">Solusi POS</a>
+            <a href="#" data-toggle-theme class="header-icon header-icon-2 show-on-theme-dark"><i class="fas fa-sun"></i></a>
+            <a href="#" data-toggle-theme class="header-icon header-icon-2 show-on-theme-light"><i class="fas fa-moon"></i></a>
+
+        </div>
+        <div id="footer-bar" class="footer-bar-5">
+            <a href="#" onclick="javascript:menu('po-receiving.html');"><i class="fa fa-truck color-highlight"></i><span>PO</span></a>
+            <a href="#" onclick="javascript:menu('cek-harga.html');"><i class="fa-solid fa-barcode color-highlight"></i><span>Harga</span></a>
+            <a href="#" onclick="javascript:menu('stock-opname.html');"><i class="fa fa-cubes color-highlight"></i><span>SO</span></a>
+            <a href="#" onclick="javascript:menu('label-harga.html');"><i class="fa-solid fa-clipboard-question color-highlight"></i><span>Label</span></a>
+            <a href="#" onclick="logoutMe();"><i class="fa fa-sign-out-alt color-red-dark"></i><span>Logout</span></a>
+        </div>
+
+        <div class="page-content" style="min-height:60vh!important">
+            <div class="page-title page-title-small">
+                <h2></h2>
+            </div>
+            <div class="card header-card shape-rounded" data-card-height="150">
+                <div class="card-overlay bg-highlight opacity-95"></div>
+                <div class="card-overlay dark-mode-tint"></div>
+            </div>
+
+            <div class="card card-style">
+                <form id="f_po">
+                    <div class="content mb-0">
+                        <h3 class="font-700">PO Receiving</h3>
+                        <p class="mb-4">Silahkan pilih PO dan scan barcode.</p>
+                        
+                        <div class="input-style mb-4">
+                            <select id="po" name="po" class="form-control" autofocus required onchange="javascript:$('#sku').focus();">
+                            </select>
+                        </div>
+
+                        <input type="hidden" name="qty-order" id="qtyOrder" value="">
+                        
+                        <div class="input-style has-icon mb-4">
+                            <i class="fa fa-barcode"></i>
+                            <input type="text" name="sku" class="form-control" id="sku" placeholder="ID/SKU" required>
+                        </div>
+
+                        <div class="card-jd mb-4" id="detailorder"></div>
+
+                        <div class="input-style mb-4" id="pstok" style="display:none">
+                            <input type="text" name="stok" class="form-control" id="stok" placeholder="Qty Received">
+                        </div>
+
+                        <button type="button" onclick="callScannerMG();" class="btn btn-full btn-blue mb-3 w-100 shadow-lg">SCANNER</button>
+                        <button type="button" onclick="btSimpanPo();" class="btn btn-full btn-green mb-3 w-100 shadow-lg" id="btnSimpPo">SIMPAN</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script src="scripts/jquery.min.js"></script>
+    <script type="text/javascript">
+        var token = localStorage.getItem('tokenpda');
+        cekLogin();
+
+        function menu(url) {
+            window.location.href = url;
+        }
+
+        function callScannerMG() {
+            openBarcodeScanner(function (result) {
+                $('#sku').val(result);
+                cariOrder(result);
+            }, 'Scan Barcode PO Receiving');
+        }
+
+        function cekLogin() {
+            token = localStorage.getItem('tokenpda');
+            if (token == null || token == undefined) {
+                window.location.href = 'index.html';
+            } else {
+                return true;
+            }
+        }
+
+        function sqlerror(error) {
+            showNotification('Error: ' + JSON.stringify(error), 'error');
+        }
+
+
+        function logoutMe() {
+            localStorage.setItem('tokenpda', '');
+            localStorage.setItem('user', '');
+            localStorage.setItem('first', '');
+            localStorage.setItem('last', '');
+            localStorage.setItem('toko', '');
+            localStorage.setItem('id', '');
+            window.location.href = 'index.html';
+        }
+
+        select_po();
+
+        function select_po() {
+            var toko = localStorage.getItem('toko');
+            var data = new FormData();
+            data.append('toko', toko);
+            $.ajax({
+                type: 'POST',
+                processData: false, // important
+                contentType: false, // important
+                data: data,
+                url: 'https://store.kottykosmetik.com/Q_Po_receiving/get_po',
+                dataType: 'json',
+                success: function(data) {
+                    console.log(data);
+                    var html = '';
+                    var no = 0;
+                    if (data.length == 0) {
+                        html = '<option value="default" disabled selected>-Pilih PO-</option>';
+                    } else {
+                        html = '<option value="default" disabled selected>-Pilih PO-</option>';
+                        for (i = 0; i < data.length; i++) {
+                            html += '<option value="' + data[i].no_po + '">' + data[i].no_po + ' - ' + data[i].supplier + '</option>';
+                        }
+                    }
+                    $('#po').html(html);
+                }
+            })
+        }
+
+        $(document).on("keyup change", "#sku", function() {
+            var sku = $(this).val();
+            cariOrder(sku);
+        });
+
+        function cariOrder(id) {
+            if (id.length < 4) return false;
+            var po = $('#po').val();
+            var toko = localStorage.getItem('toko');
+            var data = new FormData();
+            data.append('sku', id);
+            data.append('nopo', po);
+            data.append('toko', toko);
+            data.append('token', token);
+            $.ajax({
+                type: 'POST',
+                processData: false, // important
+                contentType: false, // important
+                data: data,
+                url: 'https://store.kottykosmetik.com/Q_Po_receiving/cari_order',
+                dataType: 'json',
+                success: function(data) {
+                    console.log(data);
+                    var html = '';
+                    var no = 0;
+                    if (data.length == 0) {
+                        html = '<div class="">Order Tidak ditemukan..</div>';
+                    } else {
+                        for (i = 0; i < data.length; i++) {
+                            html +=
+                                '<b>Nama Produk :</b>' +
+                                '<div class="font-16">' + data[i].nama_produk + '</div>' +
+                                '<b>Qty Order :</b>' +
+                                '<div class="font-16">' + data[i].qty + '</div>' +
+                                '</p>';
+                            $('#qtyOrder').val(data[i].qty);
+                        }
+                        $('#pstok').show();
+                        $("#stok").focus();
+                    }
+                    $('#detailorder').html(html);
+
+                }
+            })
+        }
+
+        function btSimpanPo() {
+            $("#btnSimpPo").html('loading...');
+
+            var sku = $('#sku').val();
+            var po = $('#po').val();
+            var stok = $('#stok').val();
+            var qty_order = $('#qtyOrder').val();
+            if (Number(qty_order) < Number(stok)) {
+                showNotification('Qty diterima lebih banyak dari orderan!', 'warning');
+                $("#btnSimpPo").html('Simpan');
+                $("#stok").focus();
+                return false;
+            }
+            if (stok == '' || stok == null || stok == undefined) {
+                showNotification('Qty diterima belum diisi!', 'warning');
+                $("#btnSimpPo").html('Simpan');
+                $("#stok").focus();
+                return false;
+            }
+            var data = new FormData();
+            data.append('sku', sku);
+            data.append('po', po);
+            data.append('stok', stok);
+            token = localStorage.getItem('tokenpda');
+            var iduser = localStorage.getItem('id');
+            data.append('token', token);
+            data.append('iduser', iduser);
+
+            $.ajax({
+                type: 'POST',
+                processData: false, // important
+                contentType: false, // important
+                data: data,
+                url: 'https://store.kottykosmetik.com/Q_Po_receiving/simpan_po',
+                dataType: 'json',
+                // in PHP you can call and process file in the same way as if it was submitted from a form:
+                // $_FILES['input_file_name']
+                success: simpanSukses,
+                error: sqlerror
+            });
+        }
+
+        function simpanSukses(data) {
+            if (data.status == 'error') {
+                $("#btnSimpPo").html('Simpan');
+                showNotification(data.pesan, 'error');
+            } else {
+                showNotification('PO berhasil disimpan', 'success');
+                $('input[type=text]').val('');
+                $("#detailorder").html('');
+                $('#pstok').hide();
+                $("#sku").focus();
+                $("#btnSimpPo").html('Simpan');
+            }
+        }
+    </script>
+    <script type="text/javascript" src="scripts/barcode-scanner.js"></script>
+    <script type="text/javascript" src="scripts/bootstrap.min.js"></script>
+    <script type="text/javascript" src="scripts/custom.js"></script>
+</body>
