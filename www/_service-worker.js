@@ -9,6 +9,7 @@ const STATIC_ASSETS = [
   '/label-harga.html',
   '/po-receiving.html',
   '/stock-opname.html',
+  '/offline-sync.html',
   '/manifest.json',
   '/styles/bootstrap.css',
   '/styles/style.css',

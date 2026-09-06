@@ -1,0 +1,282 @@
+<!DOCTYPE HTML>
+<html lang="en">
+
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1, viewport-fit=cover" />
+    <title>Offline Sync - PDA Solusi POS</title>
+    <link rel="stylesheet" type="text/css" href="styles/bootstrap.css">
+    <link rel="stylesheet" type="text/css" href="styles/style.css">
+    <link rel="stylesheet" type="text/css" href="styles/modern-ui.css">
+    <link href="https://fonts.googleapis.com/css?family=Poppins:300,400,500,600,700,800,900|Roboto:300,300i,400,400i,500,500i,700,700i,900,900i&amp;display=swap" rel="stylesheet">
+    <link rel="stylesheet" type="text/css" href="fonts/css/all.css">
+    <link rel="stylesheet" type="text/css" href="fonts/css/solid.css">
+    <link rel="apple-touch-icon" sizes="180x180" href="app/icons/icon-192x192.png">
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#1a73e8">
+</head>
+
+<body class="theme-light">
+
+    <div id="preloader">
+        <div class="spinner-border color-highlight" role="status"></div>
+    </div>
+
+    <div id="page">
+
+        <div class="header header-fixed header-auto-show header-logo-app">
+            <a href="#" data-back-button class="header-title header-subtitle">Solusi POS</a>
+            <a href="#" data-toggle-theme class="header-icon header-icon-2 show-on-theme-dark"><i class="fas fa-sun"></i></a>
+            <a href="#" data-toggle-theme class="header-icon header-icon-2 show-on-theme-light"><i class="fas fa-moon"></i></a>
+        </div>
+
+        <div id="footer-bar" class="footer-bar-5">
+            <a href="#" onclick="javascript:menu('po-receiving.html');"><i class="fa fa-truck color-highlight"></i><span>PO</span></a>
+            <a href="#" onclick="javascript:menu('cek-harga.html');"><i class="fa-solid fa-barcode color-highlight"></i><span>Harga</span></a>
+            <a href="#" onclick="javascript:menu('stock-opname.html');"><i class="fa fa-cubes color-highlight"></i><span>SO</span></a>
+            <a href="#" onclick="javascript:menu('label-harga.html');"><i class="fa-solid fa-clipboard-question color-highlight"></i><span>Label</span></a>
+            <a href="#" onclick="logoutMe();"><i class="fa fa-sign-out-alt color-red-dark"></i><span>Logout</span></a>
+        </div>
+
+        <div class="page-content" style="min-height:60vh!important">
+            <div class="page-title page-title-small">
+                <h2></h2>
+            </div>
+            <div class="card header-card shape-rounded" data-card-height="150">
+                <div class="card-overlay bg-highlight opacity-95"></div>
+                <div class="card-overlay dark-mode-tint"></div>
+            </div>
+
+            <div class="card card-style">
+                <div class="content mb-0">
+                    <h3 class="font-700"><i class="fa fa-sync me-2"></i>Offline Sync</h3>
+                    <p class="mb-4">Sinkronisasi data produk untuk mode offline.</p>
+
+                    <!-- Status Card -->
+                    <div class="card bg-theme mb-3 p-3 rounded-m shadow-sm">
+                        <div class="row">
+                            <div class="col-6 text-center border-end">
+                                <h4 class="font-700 mb-0" id="productCount">-</h4>
+                                <small class="opacity-50">Produk Tersimpan</small>
+                            </div>
+                            <div class="col-6 text-center">
+                                <h4 class="font-700 mb-0" id="pendingCount">-</h4>
+                                <small class="opacity-50">SO Pending</small>
+                            </div>
+                        </div>
+                        <div class="text-center mt-3">
+                            <small class="opacity-50">Sync terakhir: <span id="lastSyncTime">-</span></small>
+                        </div>
+                    </div>
+
+                    <!-- Progress Bar -->
+                    <div id="syncProgress" style="display:none;" class="mb-3">
+                        <div class="progress mb-2" style="height: 20px;">
+                            <div id="syncProgressBar" class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" style="width:0%"></div>
+                        </div>
+                        <div class="text-center">
+                            <small id="syncProgressText">0 / 0</small>
+                        </div>
+                    </div>
+
+                    <!-- Action Buttons -->
+                    <button type="button" onclick="doSyncProducts();" class="btn btn-full btn-blue mb-3 w-100 shadow-lg" id="btnSync">
+                        <i class="fa fa-download me-2"></i>SYNC PRODUK
+                    </button>
+
+                    <button type="button" onclick="doViewPending();" class="btn btn-full btn-warning mb-3 w-100 shadow-lg">
+                        <i class="fa fa-list me-2"></i>LIHAT PENDING SO
+                    </button>
+
+                    <button type="button" onclick="doBulkSync();" class="btn btn-full btn-green mb-3 w-100 shadow-lg" id="btnUpload">
+                        <i class="fa fa-upload me-2"></i>KIRIM KE SERVER
+                    </button>
+
+                    <button type="button" onclick="doClearData();" class="btn btn-full btn-danger mb-3 w-100 shadow-lg">
+                        <i class="fa fa-trash me-2"></i>HAPUS DATA LOKAL
+                    </button>
+
+                    <a href="dashboard.html" class="btn btn-full btn-secondary w-100 shadow-lg">
+                        <i class="fa fa-arrow-left me-2"></i>KEMBALI
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Pending Items Modal -->
+        <div class="modal fade" id="pendingModal" tabindex="-1">
+            <div class="modal-dialog modal-dialog-scrollable">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Pending Stock Opname</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <table class="table table-sm">
+                            <thead><tr><th>SKU</th><th>Produk</th><th>Qty</th><th></th></tr></thead>
+                            <tbody id="pendingList"></tbody>
+                        </table>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Tutup</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="scripts/jquery.min.js"></script>
+    <script src="scripts/so-offline.js"></script>
+    <script type="text/javascript">
+        cekLogin();
+
+        function menu(url) {
+            window.location.href = url;
+        }
+
+        function cekLogin() {
+            var token = localStorage.getItem('tokenpda');
+            if (token == null || token == undefined) {
+                window.location.href = 'index.html';
+            } else {
+                SoOffline.initDB().then(updateSyncStatus);
+                return true;
+            }
+        }
+
+        function sqlerror(error) {
+            showNotification('Error: ' + JSON.stringify(error), 'error');
+        }
+
+        function logoutMe() {
+            localStorage.setItem('tokenpda', '');
+            localStorage.setItem('user', '');
+            localStorage.setItem('first', '');
+            localStorage.setItem('last', '');
+            localStorage.setItem('toko', '');
+            localStorage.setItem('id', '');
+            window.location.href = 'index.html';
+        }
+
+        function updateSyncStatus() {
+            Promise.all([
+                SoOffline.getProductCount(),
+                SoOffline.getPendingCount(),
+                SoOffline.getSyncMeta('products_last_sync')
+            ]).then(function(results) {
+                var prodCount = results[0];
+                var pendCount = results[1];
+                var lastSync = results[2];
+                var syncText = lastSync ? new Date(lastSync).toLocaleString('id-ID') : 'Belum pernah sync';
+                
+                $('#productCount').text(prodCount.toLocaleString('id-ID'));
+                $('#pendingCount').text(pendCount);
+                $('#lastSyncTime').text(syncText);
+            });
+        }
+
+        function doSyncProducts() {
+            var toko = localStorage.getItem('toko');
+            var token = localStorage.getItem('tokenpda');
+
+            $('#btnSync').prop('disabled', true).html('<i class="fa fa-spinner fa-spin me-2"></i>SYNCING...');
+            $('#syncProgress').show();
+            $('#syncProgressBar').css('width', '0%');
+            $('#syncProgressText').text('Memulai...');
+
+            SoOffline.syncProducts(toko, token, function(synced, total) {
+                var pct = Math.round((synced / total) * 100);
+                $('#syncProgressBar').css('width', pct + '%');
+                $('#syncProgressText').text(synced.toLocaleString('id-ID') + ' / ' + total.toLocaleString('id-ID'));
+            }).then(function() {
+                $('#syncProgress').hide();
+                $('#btnSync').prop('disabled', false).html('<i class="fa fa-download me-2"></i>SYNC PRODUK');
+                showNotification('Sync produk selesai', 'success');
+                updateSyncStatus();
+            }).catch(function(err) {
+                $('#syncProgress').hide();
+                $('#btnSync').prop('disabled', false).html('<i class="fa fa-download me-2"></i>SYNC PRODUK');
+                showNotification('Gagal sync: ' + err.message, 'error');
+            });
+        }
+
+        function doViewPending() {
+            SoOffline.getPendingItems().then(function(items) {
+                var html = '';
+                if (items.length === 0) {
+                    html = '<tr><td colspan="4" class="text-center">Tidak ada data pending</td></tr>';
+                } else {
+                    items.forEach(function(item) {
+                        html += '<tr>' +
+                            '<td><small>' + item.id_produk + '</small></td>' +
+                            '<td><small>' + item.nama_produk + '</small></td>' +
+                            '<td>' + item.stok_fisik + '</td>' +
+                            '<td><button class="btn btn-sm btn-danger" onclick="deletePendingItem(' + item.id + ')"><i class="fa fa-trash"></i></button></td>' +
+                            '</tr>';
+                    });
+                }
+                $('#pendingList').html(html);
+                new bootstrap.Modal(document.getElementById('pendingModal')).show();
+            });
+        }
+
+        function deletePendingItem(id) {
+            SoOffline.deleteSoItem(id).then(function() {
+                doViewPending();
+                updateSyncStatus();
+            });
+        }
+
+        function doBulkSync() {
+            SoOffline.getPendingCount().then(function(count) {
+                if (count === 0) {
+                    showNotification('Tidak ada data pending', 'info');
+                    return;
+                }
+                if (!confirm('Kirim ' + count + ' item ke server?')) return;
+
+                var toko = localStorage.getItem('toko');
+                var token = localStorage.getItem('tokenpda');
+                var iduser = localStorage.getItem('id');
+
+                $('#btnUpload').prop('disabled', true).html('<i class="fa fa-spinner fa-spin me-2"></i>MENGIRIM...');
+
+                SoOffline.bulkSyncToServer(toko, token, iduser).then(function(res) {
+                    $('#btnUpload').prop('disabled', false).html('<i class="fa fa-upload me-2"></i>KIRIM KE SERVER');
+                    showNotification(res.pesan, 'success');
+                    updateSyncStatus();
+                }).catch(function(err) {
+                    $('#btnUpload').prop('disabled', false).html('<i class="fa fa-upload me-2"></i>KIRIM KE SERVER');
+                    showNotification('Gagal: ' + err.message, 'error');
+                });
+            });
+        }
+
+        function doClearData() {
+            if (!confirm('Hapus semua data produk dan pending SO dari perangkat ini?')) return;
+            
+            SoOffline.clearPendingItems().then(function() {
+                // Clear products too
+                return SoOffline.initDB().then(function(db) {
+                    return new Promise(function(resolve) {
+                        var tx = db.transaction(['products', 'sync_meta'], 'readwrite');
+                        tx.objectStore('products').clear();
+                        tx.objectStore('sync_meta').clear();
+                        tx.oncomplete = function() { resolve(); };
+                    });
+                });
+            }).then(function() {
+                showNotification('Data lokal berhasil dihapus', 'success');
+                updateSyncStatus();
+            }).catch(function(err) {
+                showNotification('Gagal hapus: ' + err.message, 'error');
+            });
+        }
+    </script>
+
+    <script type="text/javascript" src="scripts/bootstrap.min.js"></script>
+    <script type="text/javascript" src="scripts/custom.js"></script>
+</body>
+</html>
