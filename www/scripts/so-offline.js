@@ -65,6 +65,42 @@
         });
     }
 
+    function clearProducts() {
+        return initDB().then(function(db) {
+            return new Promise(function(resolve, reject) {
+                var tx = db.transaction(['products'], 'readwrite');
+                tx.objectStore('products').clear();
+                tx.oncomplete = function() { resolve(); };
+                tx.onerror = function() { reject(tx.error); };
+            });
+        });
+    }
+
+    function storeProducts(products) {
+        if (!products || !products.length) return Promise.resolve();
+
+        return initDB().then(function(db) {
+            return new Promise(function(resolve, reject) {
+                var tx = db.transaction(['products'], 'readwrite');
+                var store = tx.objectStore('products');
+
+                products.forEach(function(p) {
+                    if (!p || p.id_produk == null || p.id_produk === '') return;
+                    store.put({
+                        id_produk: String(p.id_produk),
+                        nama_produk: p.nama_produk || '',
+                        harga: p.harga,
+                        stok: p.stok,
+                        synced_at: Date.now()
+                    });
+                });
+
+                tx.oncomplete = function() { resolve(); };
+                tx.onerror = function() { reject(tx.error); };
+            });
+        });
+    }
+
     function syncProducts(toko, token, onProgress) {
         var offset = 0;
         var limit = 500;
@@ -87,8 +123,12 @@
                     contentType: false,
                     dataType: 'json',
                     success: function(res) {
-                        if (res.status === 'error') {
-                            reject(new Error(res.pesan));
+                        if (!res || res.status === 'error') {
+                            reject(new Error((res && res.pesan) ? res.pesan : 'Response sync tidak valid'));
+                            return;
+                        }
+                        if (!Array.isArray(res.products)) {
+                            reject(new Error('Data produk tidak valid'));
                             return;
                         }
                         resolve(res);
@@ -100,51 +140,38 @@
             });
         }
 
-        function storeProducts(products) {
-            return initDB().then(function(db) {
-                return new Promise(function(resolve, reject) {
-                    var tx = db.transaction(['products'], 'readwrite');
-                    var store = tx.objectStore('products');
-
-                    products.forEach(function(p) {
-                        p.synced_at = Date.now();
-                        store.put(p);
-                    });
-
-                    tx.oncomplete = function() { resolve(); };
-                    tx.onerror = function() { reject(tx.error); };
-                });
+        function finishSync() {
+            return setSyncMeta('products_last_sync', Date.now()).then(function() {
+                return setSyncMeta('products_count', synced);
             });
         }
 
         function loop() {
             return fetchBatch().then(function(res) {
-                if (total === 0) total = res.total;
+                if (total === 0) total = res.total || 0;
 
                 return storeProducts(res.products).then(function() {
-                    synced += res.count;
-                    if (onProgress) onProgress(synced, total);
+                    synced += res.count || res.products.length;
+                    if (onProgress) onProgress(synced, total || synced);
 
-                    if (res.count < limit) {
-                        return setSyncMeta('products_last_sync', Date.now()).then(function() {
-                            return setSyncMeta('products_count', synced);
-                        });
-                    } else {
-                        offset += limit;
-                        return loop();
+                    if (!res.products.length || res.products.length < limit) {
+                        return finishSync();
                     }
+
+                    offset += limit;
+                    return loop();
                 });
             });
         }
 
-        return initDB().then(loop);
+        return initDB().then(clearProducts).then(loop);
     }
 
     function lookupProduct(id_produk) {
         return initDB().then(function(db) {
             return new Promise(function(resolve) {
                 var tx = db.transaction(['products'], 'readonly');
-                var req = tx.objectStore('products').get(id_produk);
+                var req = tx.objectStore('products').get(String(id_produk));
                 req.onsuccess = function() { resolve(req.result || null); };
                 req.onerror = function() { resolve(null); };
             });
@@ -156,7 +183,7 @@
             return new Promise(function(resolve) {
                 var tx = db.transaction(['products'], 'readonly');
                 var req = tx.objectStore('products').count();
-                req.onsuccess = function() { resolve(req.result); };
+                req.onsuccess = function() { resolve(req.result || 0); };
                 req.onerror = function() { resolve(0); };
             });
         });
@@ -189,26 +216,19 @@
         return initDB().then(function(db) {
             return new Promise(function(resolve) {
                 var tx = db.transaction(['so_items'], 'readonly');
-                var store = tx.objectStore('so_items');
-                var idx = store.index('synced');
-                var req = idx.getAll(IDBKeyRange.only(false));
-
-                req.onsuccess = function() { resolve(req.result || []); };
+                var req = tx.objectStore('so_items').getAll();
+                req.onsuccess = function() {
+                    var items = (req.result || []).filter(function(i) { return !i.synced; });
+                    resolve(items);
+                };
                 req.onerror = function() { resolve([]); };
             });
         });
     }
 
     function getPendingCount() {
-        return initDB().then(function(db) {
-            return new Promise(function(resolve) {
-                var tx = db.transaction(['so_items'], 'readonly');
-                var idx = tx.objectStore('so_items').index('synced');
-                var req = idx.count(IDBKeyRange.only(false));
-
-                req.onsuccess = function() { resolve(req.result); };
-                req.onerror = function() { resolve(0); };
-            });
+        return getPendingItems().then(function(items) {
+            return items.length;
         });
     }
 
@@ -295,6 +315,7 @@
         getPendingCount: getPendingCount,
         bulkSyncToServer: bulkSyncToServer,
         clearPendingItems: clearPendingItems,
+        clearProducts: clearProducts,
         deleteSoItem: deleteSoItem
     };
 })();

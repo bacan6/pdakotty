@@ -161,19 +161,29 @@
         }
 
         function updateSyncStatus() {
+            if (!window.SoOffline) return;
+
             Promise.all([
                 SoOffline.getProductCount(),
                 SoOffline.getPendingCount(),
-                SoOffline.getSyncMeta('products_last_sync')
+                SoOffline.getSyncMeta('products_last_sync'),
+                SoOffline.getSyncMeta('products_count')
             ]).then(function(results) {
-                var prodCount = results[0];
-                var pendCount = results[1];
+                var dbCount = Number(results[0] || 0);
+                var metaCount = results[3] != null ? Number(results[3]) : null;
+                var prodCount = metaCount != null && !isNaN(metaCount) ? metaCount : dbCount;
+                var pendCount = Number(results[1] || 0);
                 var lastSync = results[2];
-                var syncText = lastSync ? new Date(lastSync).toLocaleString('id-ID') : 'Belum pernah sync';
-                
-                $('#productCount').text(prodCount.toLocaleString('id-ID'));
-                $('#pendingCount').text(pendCount);
+                var syncText = lastSync ? new Date(Number(lastSync)).toLocaleString('id-ID') : 'Belum pernah sync';
+
+                $('#productCount').text(String(prodCount));
+                $('#pendingCount').text(String(pendCount));
                 $('#lastSyncTime').text(syncText);
+            }).catch(function(err) {
+                console.error('updateSyncStatus', err);
+                $('#productCount').text('0');
+                $('#pendingCount').text('0');
+                $('#lastSyncTime').text('Belum pernah sync');
             });
         }
 
@@ -258,11 +268,11 @@
             if (!confirm('Hapus semua data produk dan pending SO dari perangkat ini?')) return;
             
             SoOffline.clearPendingItems().then(function() {
-                // Clear products too
+                return SoOffline.clearProducts();
+            }).then(function() {
                 return SoOffline.initDB().then(function(db) {
                     return new Promise(function(resolve) {
-                        var tx = db.transaction(['products', 'sync_meta'], 'readwrite');
-                        tx.objectStore('products').clear();
+                        var tx = db.transaction(['sync_meta'], 'readwrite');
                         tx.objectStore('sync_meta').clear();
                         tx.oncomplete = function() { resolve(); };
                     });

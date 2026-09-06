@@ -319,16 +319,23 @@
         });
 
         function updateSyncStatus() {
+            if (!window.SoOffline) return;
+
             Promise.all([
                 SoOffline.getProductCount(),
                 SoOffline.getPendingCount(),
-                SoOffline.getSyncMeta('products_last_sync')
+                SoOffline.getSyncMeta('products_last_sync'),
+                SoOffline.getSyncMeta('products_count')
             ]).then(function(results) {
-                var prodCount = results[0];
-                var pendCount = results[1];
+                var dbCount = Number(results[0] || 0);
+                var metaCount = results[3] != null ? Number(results[3]) : null;
+                var prodCount = metaCount != null && !isNaN(metaCount) ? metaCount : dbCount;
+                var pendCount = Number(results[1] || 0);
                 var lastSync = results[2];
-                var syncText = lastSync ? new Date(lastSync).toLocaleString('id-ID') : '-';
+                var syncText = lastSync ? new Date(Number(lastSync)).toLocaleString('id-ID') : '-';
                 $('#syncStatus').html('Produk: ' + prodCount + ' | Pending: ' + pendCount + '<br><small>Sync: ' + syncText + '</small>');
+            }).catch(function(err) {
+                console.error('updateSyncStatus', err);
             });
         }
 
